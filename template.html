@@ -1,0 +1,74 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Nepal from Fourier circles</title>
+<style>
+:root{box-sizing:border-box;--bg:#f7f1e6;--fg:#10204a;--mut:#5b6478;--acc:#dc143c;--blue:#003893;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#061233;--fg:#f4efe6;--mut:#9aa6c4;--acc:#dc143c;--blue:#6f9cf0}}
+:root[data-theme="dark"]{--bg:#061233;--fg:#f4efe6;--mut:#9aa6c4;--acc:#dc143c;--blue:#6f9cf0}
+html,body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,sans-serif}
+main{max-width:900px;margin:0 auto;padding:16px}
+canvas{width:100%;height:auto;aspect-ratio:3/2;display:block}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:center;margin:8px 0}
+button{background:var(--acc);color:#fff;border:0;border-radius:8px;padding:8px 14px;font-size:14px;cursor:pointer}
+label{font-size:13px;color:var(--mut)}
+#f{text-align:center;font-family:Georgia,serif;font-size:clamp(15px,3.2vw,22px);line-height:1.8;opacity:0;transition:opacity 1.5s}
+#f.on{opacity:1}#f i{color:var(--blue)}#f b{color:var(--acc);font-weight:400}
+</style></head><body><main>
+<canvas id="c" width="1200" height="800"></canvas>
+<div class="row"><button id="go">Replay</button>
+<label>Circles: <input id="n" type="range" min="2" max="400" value="400"> <span id="nv">400</span></label>
+<label>Speed: <input id="sp" type="range" min="1" max="10" value="4"></label></div>
+<div id="f"></div>
+</main><script>
+const D=__DATA__;
+const cv=document.getElementById('c'),ctx=cv.getContext('2d');
+const W=cv.width,H=cv.height;
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+let K=400,fa=0,t=0,path=[],done=false;
+// fit
+let mn=[1e9,1e9],mx=[-1e9,-1e9];
+for(let i=0;i<2000;i++){const p=pt(i/2000*2*Math.PI,D.length);mn[0]=Math.min(mn[0],p[0]);mx[0]=Math.max(mx[0],p[0]);mn[1]=Math.min(mn[1],p[1]);mx[1]=Math.max(mx[1],p[1])}
+const S=Math.min((W-80)/(mx[0]-mn[0]),(H-80)/(mx[1]-mn[1])),cx=(mn[0]+mx[0])/2,cy=(mn[1]+mx[1])/2;
+const X=v=>W/2+(v-cx)*S,Y=v=>H/2-(v-cy)*S;
+function pt(t,k){let x=0,y=0;for(let i=0;i<k;i++){const[f,a,b]=D[i];const c=Math.cos(f*t),s=Math.sin(f*t);x+=a*c-b*s;y+=b*c+a*s}return[x,y]}
+function draw(){
+ ctx.clearRect(0,0,W,H);
+ if(done){ctx.beginPath();path.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.closePath();ctx.lineJoin='round';ctx.lineWidth=10;ctx.strokeStyle='#003893';ctx.stroke();ctx.fillStyle='#dc143c';ctx.fill()}
+ ctx.beginPath();path.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));
+ if(!done){ctx.strokeStyle=css('--acc');ctx.lineWidth=3;ctx.stroke()}
+ if(!done){let x=0,y=0;ctx.lineWidth=1;
+  for(let i=0;i<K;i++){const[f,a,b]=D[i];const r=Math.hypot(a,b),ph=Math.atan2(b,a)+f*t;
+   const nx=x+r*Math.cos(ph),ny=y+r*Math.sin(ph);
+   if(i>0){ctx.beginPath();ctx.arc(X(x),Y(y),r*S,0,7);ctx.strokeStyle=css('--mut')+'55';ctx.stroke();
+    ctx.beginPath();ctx.moveTo(X(x),Y(y));ctx.lineTo(X(nx),Y(ny));ctx.strokeStyle=css('--fg')+'99';ctx.stroke()}
+   x=nx;y=ny}
+  ctx.beginPath();ctx.arc(X(x),Y(y),4,0,7);ctx.fillStyle=css('--fg');ctx.fill()}
+}
+function star(c,d,r1,r2,n,rot){ctx.beginPath();for(let i=0;i<2*n;i++){const r=i%2?r1:r2,a=i*Math.PI/n+rot;i?ctx.lineTo(c+r*Math.cos(a),d+r*Math.sin(a)):ctx.moveTo(c+r*Math.cos(a),d+r*Math.sin(a))}ctx.closePath();ctx.fill()}
+function drawEmblems(){
+ fa=Math.min(1,fa+0.02);ctx.save();ctx.globalAlpha=fa;ctx.fillStyle='#fff';
+ const sw=(mx[0]-mn[0])*S,px=(fx,fy)=>[X(mn[0]+fx*(mx[0]-mn[0])),Y(mn[1]+(1-fy)*(mx[1]-mn[1]))];
+ const R=0.105*sw,[a,b]=px(0.24,0.33);
+ ctx.beginPath();ctx.arc(a,b,R,0,7);ctx.fill();
+ ctx.fillStyle='#dc143c';ctx.beginPath();ctx.arc(a,b-0.3*R,0.86*R,0,7);ctx.fill();
+ ctx.fillStyle='#fff';star(a,b-0.05*R,0.3*R,0.52*R,10,-Math.PI/2);
+ const r=0.066*sw,[c,d]=px(0.79,0.80);star(c,d,0.55*r,r,12,-Math.PI/2);
+ ctx.restore()}
+function step(){
+ if(!done){const sp=+document.getElementById('sp').value*0.0005;
+  for(let j=0;j<4&&!done;j++){const p=pt(t,K);path.push([X(p[0]),Y(p[1])]);t+=sp/4;if(t>=2*Math.PI){done=true;finish()}}}
+ draw();if(done)drawEmblems();requestAnimationFrame(step)}
+const f3=v=>(v<0?'−':'+')+Math.abs(v).toFixed(3);
+function finish(){
+ const T=D.filter(d=>d[0]!==0).slice(0,3).map(([k,a,b])=>({k,a,b}));
+ const row=(v,ci,di)=>T.map(o=>`${f3(ci(o)).replace(/^\+/,'')}cos(${o.k}t) ${f3(di(o))}sin(${o.k}t)`);
+ document.getElementById('f').innerHTML=
+ `<i>x</i>(<i>t</i>) = ${D[0][1].toFixed(3)} + Σ<sub>k</sub> (<i>a<sub>k</sub></i> cos <i>kt</i> + <i>b<sub>k</sub></i> sin <i>kt</i>)<br>`+
+ `<i>y</i>(<i>t</i>) = ${D[0][2].toFixed(3)} + Σ<sub>k</sub> (<i>c<sub>k</sub></i> cos <i>kt</i> + <i>d<sub>k</sub></i> sin <i>kt</i>)<br>`+
+ `<b>${K} terms</b>, 0 ≤ t ≤ 2π`;
+ document.getElementById('f').classList.add('on');}
+function reset(){fa=0;t=0;path=[];done=false;document.getElementById('f').classList.remove('on');}
+document.getElementById('go').onclick=reset;
+document.getElementById('n').oninput=e=>{K=+e.target.value;document.getElementById('nv').textContent=K;reset()};
+step();
+</script></body></html>
